@@ -1077,6 +1077,15 @@ def price_chart(curve, best, cost=0):
 
 
 
+def show_chart(chart):
+    try:
+        st.altair_chart(chart, width="stretch", theme=None)
+    except TypeError:
+        st.altair_chart(chart, use_container_width=True, theme=None)
+
+
+
+
 
 
 

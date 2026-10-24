@@ -656,6 +656,15 @@ def _post(url, payload, headers=None, timeout=60):
 
 @st.cache_data(ttl=10, show_spinner=False)
 def ollama_status(model):
+ """Is Ollama running, and has the Gemma model been pulled?"""
+    try:
+        with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=1.5) as r:
+            names = [m.get("name", "") for m in json.loads(r.read().decode()).get("models", [])]
+    except Exception:
+        return False, "Ollama is not running. Start it, then run: ollama pull " + model
+    if any(n == model or n.startswith(model + ":") for n in names):
+        return True, f"{model} is ready on this machine."
+    return False, f"Ollama is running but {model} is missing. Run: ollama pull {model}"
 
 
 

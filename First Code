@@ -625,6 +625,16 @@ def on_run():
     ss.run_info = None
     ss.view = "crowd"
 
+# ----------------------------------------------------------------------------
+# Simulation + insights (Pandas)
+# ----------------------------------------------------------------------------
+def meta(p):
+    keys = ("id", "tier", "maturity", "age", "income", "desc", "cap", "occupation", "lifestyle", "background", "audience_fit",
+            "traits", "goals", "pain_points", "budget", "purchasing_habits", "interests")
+    return {k: p.get(k, "") for k in keys}
+
+
+
 
 
 

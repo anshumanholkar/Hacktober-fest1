@@ -1505,6 +1505,58 @@ def render_lab():
 
 
 
+def render_crowd():
+    ss = st.session_state
+    count = len(ss.results) if ss.results else int(ss.get("aud_size", 10))
+    st.markdown(f'<div class="eye">VIRTUAL CROWD</div><h1 class="hm">{count} people are reviewing your idea</h1>',
+                unsafe_allow_html=True)
+    slot = st.empty()
+    pending = ss.pending
+    if pending:
+        ss.pending = None
+        try:
+            with st.spinner(f"Generating audience profiles and collecting independent AI reviews…"):
+                cohort = audience_personas(ensure_personas(ss, pending), pending["aud"])
+                active_list = select_personas(cohort, pending.get("aud_size", 10), pending.get("tiers"))
+                if not active_list:
+                    raise ValueError("No generated personas match the selected spending tiers. Select at least one tier.")
+                if len(active_list) < int(pending.get("aud_size", 10)):
+                    raise ValueError(f"Only {len(active_list)} profiles fit the selected spending tiers. Include more tiers or reduce the crowd size.")
+                # First create one shared product understanding, then give that same
+                # context to every independent persona evaluation.
+                brief = analyze_idea(pending)
+                results = run_engine(active_list, pending, brief=brief)
+            ss.run_info = {"engine": pending["engine"], "model": pending["model"],
+                           "strict": pending["strict"], "errors": [],
+                           "failed_all": False, "brief": brief}
+            ss.results, ss.sim_price, ss.sim_cost = results, pending["price"], pending.get("cost", 0)
+            slot.markdown(crowd_html(results, 0, True, price=pending["price"]), unsafe_allow_html=True)
+            delay = max(0.12, 3.0 / len(results))
+            for i in range(len(results)):
+                time.sleep(delay)
+                slot.markdown(crowd_html(results, i + 1, True, fresh=i, price=pending["price"]), unsafe_allow_html=True)
+            idea = pending["idea"]
+            recent = {"name": idea[:28] + ("…" if len(idea) > 28 else ""), "idea": idea,
+                      "aud": pending["aud"], "price": pending["price"], "cost": pending.get("cost", 0),
+                      "tiers": pending.get("tiers"), "aud_size": len(results), "strict": pending["strict"],
+                      "t": time.time() * 1000}
+            ss.recent = ([recent] + [x for x in ss.recent if x["idea"] != idea])[:5]
+            ss.sl = min(2500, max(29, 29 + round((pending["price"] - 29) / 10) * 10))
+            ss.view = "ins"
+            st.rerun()
+        except Exception as exc:
+            ss.results = []
+            ss.run_info = None
+            ss.sim_price, ss.sim_cost = 0, 0
+            ss.err = f"The simulation could not be completed: {type(exc).__name__}: {exc}"
+            ss.view = "lab"
+            st.rerun()
+    else:
+        slot.markdown(crowd_html(ss.results, len(ss.results), False, price=ss.sim_price), unsafe_allow_html=True)
+
+
+
+
 
 
 

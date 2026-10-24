@@ -848,6 +848,29 @@ def analyze_idea(run):
         raise ValueError("The AI idea summary returned malformed strengths or risks.")
 
 
+    def items(v):
+        return [_clip(x, 90) for x in (v if isinstance(v, list) else []) if str(x).strip()][:3]
+
+    try:
+        clarity = max(1, min(10, int(float(d["clarity"]))))
+    except (TypeError, ValueError):
+        raise ValueError("The AI idea summary returned an invalid clarity score.") from None
+    verdict = str(d["price_verdict"]).strip().lower()
+    if verdict not in ("too low", "fair", "high", "too high"):
+        raise ValueError("The AI idea summary returned an invalid price verdict.")
+    return {"summary": _clip(d.get("summary"), 200),
+            "category": _clip(d.get("category"), 28),
+            "value_prop": _clip(d.get("value_prop"), 200),
+            "strengths": items(d.get("strengths")), "risks": items(d.get("risks")),
+            "clarity": clarity, "price_verdict": verdict,
+            "price_note": _clip(d.get("price_note"), 160), "sharpen": _clip(d.get("sharpen"), 200),
+            "best_segment": (str(d.get("best_segment", "")).strip().capitalize()
+                             if str(d.get("best_segment", "")).strip().capitalize() in TIERS else ""),
+            "who_buys_what": _clip(d.get("who_buys_what"), 200),
+            "who_passes": _clip(d.get("who_passes"), 200)}
+
+
+
 
 
 

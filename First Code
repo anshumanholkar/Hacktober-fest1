@@ -171,5 +171,26 @@ def one_line(s):
     return "".join(line.strip() for line in s.strip().splitlines())
 
 
+def get_honeycomb_rows(n):
+    """Calculate balanced honeycomb row counts for n personas."""
+    if n == 10:
+        return [3, 4, 3]
+    if n <= 3:
+        return [n]
+    if n <= 6:
+        return [n // 2, n - n // 2]
+    if n <= 9:
+        return [3, 3, n - 6] if n > 6 else [3, 3]
+    if n <= 14:
+        base = n // 3
+        rem = n % 3
+        return [base + (1 if i < rem else 0) for i in range(3)]
+    base = n // 4
+    rem = n % 4
+    return [base + (1 if i < rem else 0) for i in range(4)]
+
+
+
+
 
 

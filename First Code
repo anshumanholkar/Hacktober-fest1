@@ -1106,6 +1106,19 @@ def brain_svg():
     return f'<svg viewBox="0 0 120 120">{h}</svg>'
 
 
+def orbs():
+    cols = ["#38D0E8", "#7C5CFF", "#2ED6A1", "#F5A43B", "#FF5A7A", "#3B6CF6"]
+    out = ""
+    for i, c in enumerate(cols):
+        t = i / len(cols) * math.pi * 2 - 1.2
+        x, y = 50 + 40 * math.cos(t), 50 + 40 * math.sin(t)
+        out += (f'<i style="left:calc({x:.4f}% - 23px);top:calc({y:.4f}% - 23px);border-color:{c};color:{c}">'
+                f'{svg("user", "width:22px;height:22px", "i fill")}</i>')
+    return out
+
+
+
+
 
 
 

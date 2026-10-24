@@ -1245,6 +1245,12 @@ def seg_html(df, p):
     return f'<div class="segs">{cells}</div>'
 
 
+def hl(r):
+    q = esc(r.get("quote") or "")
+    w = r.get("word")
+    return q.replace(esc(w), f"<mark>{esc(w)}</mark>", 1) if w else q
+
+
 
 
 

@@ -491,6 +491,14 @@ def dynamic_css():
                 f'.st-key-rec_{i} button p::after{{content:"{ago(x["t"])}"}}\n')
     return f"<style>{BASE_CSS}\n{ICON_CSS}\n{hover_css()}\n{css}</style>"
 
+# ----------------------------------------------------------------------------
+# State
+# ----------------------------------------------------------------------------
+def seeds():
+    return []
+
+
+
 
 
 

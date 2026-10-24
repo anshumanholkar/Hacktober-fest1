@@ -667,6 +667,53 @@ def ollama_status(model):
     return False, f"Ollama is running but {model} is missing. Run: ollama pull {model}"
 
 
+def call_llm(engine, model, key, system, user, screenshot=None, max_tokens=1200):
+    image_parts = []
+    if screenshot and screenshot.get("data"):
+        image_parts = [{"type": "image", "source": {"type": "base64",
+                       "media_type": screenshot.get("mime", "image/png"), "data": screenshot["data"]}}]
+    if engine == "ollama":
+        message = {"role": "user", "content": user}
+        if screenshot and screenshot.get("data"):
+            message["images"] = [screenshot["data"]]
+        d = _post("http://localhost:11434/api/chat",
+                  {"model": model, "stream": False, "format": "json",
+                   "options": {"temperature": 0.7, "num_predict": max_tokens},
+                   "messages": [{"role": "system", "content": system}, message]},
+                  timeout=240)
+        return d["message"]["content"]
+    if engine == "claude":
+        content = [{"type": "text", "text": user}] + image_parts
+        d = _post("https://api.anthropic.com/v1/messages",
+                  {"model": model, "max_tokens": max_tokens, "system": system,
+                   "messages": [{"role": "user", "content": content}]},
+                  {"x-api-key": key, "anthropic-version": "2023-06-01"})
+        return d["content"][0]["text"]
+    if engine == "openai":
+        content = [{"type": "text", "text": user}]
+        if screenshot and screenshot.get("data"):
+            content.append({"type": "image_url", "image_url": {"url":
+                           f"data:{screenshot.get('mime', 'image/png')};base64,{screenshot['data']}"}})
+        d = _post("https://api.openai.com/v1/chat/completions",
+                  {"model": model, "max_tokens": max_tokens, "response_format": {"type": "json_object"},
+                   "messages": [{"role": "system", "content": system}, {"role": "user", "content": content}]},
+                  {"Authorization": f"Bearer {key}"})
+        return d["choices"][0]["message"]["content"]
+    if engine == "gemini":
+        parts = [{"text": user}]
+        if screenshot and screenshot.get("data"):
+            parts.append({"inline_data": {"mime_type": screenshot.get("mime", "image/png"),
+                                           "data": screenshot["data"]}})
+        d = _post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}",
+                  {"systemInstruction": {"parts": [{"text": system}]},
+                   "contents": [{"role": "user", "parts": parts}],
+                   "generationConfig": {"responseMimeType": "application/json", "maxOutputTokens": max_tokens}})
+        return d["candidates"][0]["content"]["parts"][0]["text"]
+    raise ValueError(f"Unknown engine {engine}")
+
+
+
+
 
 
 

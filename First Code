@@ -1365,6 +1365,143 @@ def render_topbar():
         st.markdown(ME, unsafe_allow_html=True)
 
 
+def render_lab():
+    ss = st.session_state
+    with st.container(key="hero"):
+        left, right = st.columns([1.5, 1])
+        with left:
+            st.markdown(HERO_TXT, unsafe_allow_html=True)
+            with st.container(key="formcard"):
+                with st.container(key="g_idea"):
+                    st.markdown(label("bulb", "What are you building?"), unsafe_allow_html=True)
+                    st.text_area("Product / Startup Idea", key="idea", max_chars=MAX_IDEA_CHARS, height=96,
+                                 placeholder="Pitch it as if you were in an elevator: what it is, who it is for, and why "
+                                             "anyone should care...",
+                                 label_visibility="collapsed")
+                with st.container(key="cnt"):
+                    st.markdown(f'<div class="cnt"><span>{len(ss.idea or "")}</span>/{MAX_IDEA_CHARS:,}</div>',
+                                unsafe_allow_html=True)
+
+                # Row 1: Target Audience + Price (side by side)
+                with st.container(key="row"):
+                    c1, c2, c3 = st.columns([1.3, 1, 1])
+                    with c1:
+                        with st.container(key="g_aud"):
+                            st.markdown(label("users", "Who is it for?"), unsafe_allow_html=True)
+                            st.text_input("Target Audience", key="aud", label_visibility="collapsed",
+                                          placeholder="e.g. sleep-deprived college students...")
+                    with c2:
+                        with st.container(key="g_price"):
+                            st.markdown(label("rupee", "Price tag (₹)"), unsafe_allow_html=True)
+                            st.number_input("Proposed Price", min_value=0, step=1, key="price",
+                                            label_visibility="collapsed")
+                    with c3:
+                        with st.container(key="g_cost"):
+                            st.markdown(label("clip", "Production cost (₹)"), unsafe_allow_html=True)
+                            st.number_input("Production Cost per unit", min_value=0, step=1, key="cost",
+                                            label_visibility="collapsed")
+
+                render_suggestions()
+
+                # Which kinds of people (income tier) to survey
+                with st.container(key="g_tiers"):
+                    st.markdown(label("users", "Which reviewer budgets should we include?"), unsafe_allow_html=True)
+                    st.multiselect("Spending tiers", TIERS, key="tiers", label_visibility="collapsed",
+                                   format_func=lambda t: f"{t} \u00b7 {TIER_INFO[t]}")
+                    plan = tier_plan(int(ss.get("aud_size", 10)), ss.get("tiers"))
+                    split = " \u00b7 ".join(f"{c} {t}" for t, c in plan.items())
+                    st.markdown(f'<div class="aud-sub">Reviewers will reflect your target audience, with an even split across budgets: <b>{esc(split)}</b></div>',
+                                unsafe_allow_html=True)
+                    with st.expander("Meet all 20 personas (who they are and what they can afford)"):
+                        st.markdown(persona_library_html(ss.aud), unsafe_allow_html=True)
+
+                # Row 2: Audience size slider in its own full-width row
+                with st.container(key="g_aud_card"):
+                    val = int(ss.get("aud_size", 10))
+                    if val <= 3:
+                        badge, sub = f"{val} critics", "🌱 Tiny huddle • Quick gut check"
+                    elif val <= 7:
+                        badge, sub = f"{val} critics", "🎯 Focus group • Sharp signal"
+                    elif val <= 12:
+                        badge, sub = f"{val} critics", "🧠 The full hive • Balanced opinions"
+                    elif val <= 16:
+                        badge, sub = f"{val} critics", "🔥 Big crowd • Louder disagreements"
+                    else:
+                        badge, sub = f"{val} critics", "⚡ Total chaos • All 20 critics unleashed"
+                    st.markdown(one_line(f"""
+<div class="aud-header"><div class="lb"><i>{svg("users")}</i>How big is the crowd?</div>
+<div class="aud-pill">{badge}</div></div><div class="aud-sub">{sub}</div>"""), unsafe_allow_html=True)
+                    st.slider("Audience Sample Size", min_value=1, max_value=20, step=1,
+                              key="aud_size", label_visibility="collapsed")
+                    st.markdown(one_line("""
+<div class="aud-ticks"><span class="aud-tick">1 <i>(Huddle)</i></span>
+<span class="aud-tick mid">10 <i>(Hive)</i></span>
+<span class="aud-tick">20 <i>(Chaos)</i></span></div>"""), unsafe_allow_html=True)
+
+                # Row 3: persona strictness + AI engine
+                with st.container(key="g_ai_card"):
+                    sv = int(ss.get("strict", 5))
+                    mood = ("😇 Soft touch • Easy to impress" if sv <= 3 else
+                            "⚖️ Fair and square • Honest, not cruel" if sv <= 7 else
+                            "🔪 Savage • Nothing is ever good enough")
+                    st.markdown(one_line(f"""
+<div class="aud-header"><div class="lb"><i>{svg("star")}</i>How harsh should they be?</div>
+<div class="aud-pill">{sv}/10</div></div><div class="aud-sub">{mood}</div>"""), unsafe_allow_html=True)
+                    st.slider("Persona Strictness", min_value=1, max_value=10, step=1, key="strict",
+                              label_visibility="collapsed")
+                    st.markdown(one_line("""
+<div class="aud-ticks"><span class="aud-tick">1 <i>(Softie)</i></span>
+<span class="aud-tick mid">5 <i>(Fair)</i></span><span class="aud-tick">10 <i>(Savage)</i></span></div>"""),
+                                unsafe_allow_html=True)
+                    st.markdown('<div class="ai-gap"></div>', unsafe_allow_html=True)
+                    st.markdown(label("spark", "Who is judging?"), unsafe_allow_html=True)
+                    st.selectbox("AI Engine", list(ENGINES), format_func=ENGINES.get, key="engine",
+                                 label_visibility="collapsed")
+                    eng = ss.engine
+                    if eng == "rules":
+                        st.markdown('<div class="aud-sub">Offline rule-based feedback is disabled. Choose an AI model for real generated results.</div>',
+                                    unsafe_allow_html=True)
+                    else:
+                        m1, m2 = st.columns(2)
+                        with m1:
+                            st.text_input("Model name", key=f"model_{eng}", placeholder=DEFAULT_MODELS[eng],
+                                          label_visibility="collapsed")
+                        with m2:
+                            if eng in ENV_KEYS:
+                                st.text_input("API key", key=f"key_{eng}", type="password",
+                                              placeholder=f"API key (or env {ENV_KEYS[eng]})",
+                                              label_visibility="collapsed")
+                            else:
+                                ok, msg = ollama_status(ss.get("model_ollama") or DEFAULT_MODELS["ollama"])
+                                st.markdown(f'<div class="aud-sub">{"✅" if ok else "⚠️"} {esc(msg)}</div>',
+                                            unsafe_allow_html=True)
+
+                with st.container(key="g_up"):
+                    st.markdown(label("clip", "Optional: show us instead of telling us"), unsafe_allow_html=True)
+                    with st.container(key="upbox"):
+                        f = st.file_uploader("Screenshot", type=["png", "jpg", "jpeg"], key="shot",
+                                             label_visibility="collapsed")
+                        if f is not None:
+                            if f.size > 5 * 1024 * 1024:
+                                ss.shot_error = "Screenshot must be under 5MB."
+                                ss.shot_b64 = ss.shot_name = ss.shot_mime = None
+                            else:
+                                ss.shot_error = ""
+                                ss.shot_name, ss.shot_mime = f.name, f.type or "image/png"
+                                ss.shot_b64 = base64.b64encode(f.getvalue()).decode()
+                        title = esc(ss.shot_name) if ss.shot_name else "Drop a screenshot (landing page, mockup, etc.)"
+                        img = (f'<img src="data:{ss.shot_mime};base64,{ss.shot_b64}" alt="Uploaded screenshot">'
+                               if ss.shot_b64 else "")
+                        st.markdown(one_line(f"""
+<div class="up"><span class="ic">{svg("cloud")}</span><span>{title}<small>PNG, JPG (max 5MB)</small></span>{img}</div>"""),
+                                    unsafe_allow_html=True)
+                st.button("Unleash the Crowd", key="run", on_click=on_run)
+                with st.container(key="errwrap"):
+                    st.markdown(f'<div class="err">{esc(ss.err)}</div>', unsafe_allow_html=True)
+        with right:
+            st.markdown(right_card(), unsafe_allow_html=True)
+    st.markdown(how_card(), unsafe_allow_html=True)
+
 
 
 

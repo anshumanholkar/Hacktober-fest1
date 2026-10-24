@@ -1055,6 +1055,26 @@ def price_chart(curve, best, cost=0):
     order = [r["label"] for r in recs]
 
  
+    def grad(a, b):
+        return alt.Gradient(gradient="linear",
+                            stops=[alt.GradientStop(color=a, offset=0), alt.GradientStop(color=b, offset=1)],
+                            x1=1, x2=1, y1=1, y2=0)
+
+    base = alt.Chart(alt.Data(values=recs)).encode(
+        x=alt.X("label:N", sort=order, scale=alt.Scale(paddingInner=0.25, paddingOuter=0.02),
+                axis=alt.Axis(title=None, labelAngle=0, labelFontSize=11, ticks=False, domain=False,
+                              labelPadding=6, labelColor=PALETTE[st.session_state.theme]["mut"])),
+        y=alt.Y("rev:Q", axis=None, scale=alt.Scale(domain=[0, ymax])),
+        tooltip=[alt.Tooltip("label:N", title="Price"), alt.Tooltip("conv:Q", title="Would buy %"),
+                 alt.Tooltip("rev:Q", title="Profit / 100 visitors" if cost else "Revenue / 100 visitors", format=".0f")],
+    )
+    corner = dict(cornerRadiusTopLeft=8, cornerRadiusTopRight=8)
+    normal = base.transform_filter("datum.best === false && datum.loss === false").mark_bar(color=grad("#7C5CFF", "#3B6CF6"), **corner)
+    loss = base.transform_filter("datum.best === false && datum.loss === true").mark_bar(color=grad("#FF5A7A", "#B8325A"), **corner)
+    top = base.transform_filter("datum.best === true").mark_bar(color=grad("#2ED6A1", "#38D0E8"), **corner)
+    return (alt.layer(normal, loss, top).properties(height=190)
+            .configure_view(stroke=None).configure(background="transparent"))
+
 
 
 

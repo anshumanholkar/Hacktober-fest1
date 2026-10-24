@@ -1043,6 +1043,17 @@ def price_curve(df, price, cost=0):
             "half_max": max(half) if half else None, "best_conv": round(conv.get(best, 0) * 100)}
     return curve, best, info
 
+
+
+def price_chart(curve, best, cost=0):
+    ymax = float(curve["rev"].max())
+    ymax = ymax if ymax > 0 else 1.0
+    floor = ymax * 6 / 150
+    recs = [{"label": f"₹{int(p)}", "rev": max(float(r), floor), "best": int(p) == int(best),
+             "loss": bool(cost and int(p) < int(cost)), "conv": int(c)}
+            for p, r, c in zip(curve["price"], curve["rev"], curve["conv"])]
+    order = [r["label"] for r in recs]
+
  
 
 

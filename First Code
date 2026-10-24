@@ -1141,6 +1141,19 @@ HERO_TXT = one_line("""
 
 
 
+def right_card():
+    return one_line(f"""
+<div class="card"><div class="orbit"><div class="ring" style="width:280px;height:280px"></div>
+<div class="ring" style="width:200px;height:200px"></div><div class="brain">{brain_svg()}</div><div class="orb">{orbs()}</div></div>
+<div class="feat">
+<div><span>{svg("users")}</span><p><b>Up to 20 outspoken critics</b>Different budgets, different pet peeves, and no sugarcoating.</p></div>
+<div><span>{svg("chat")}</span><p><b>Honest objections</b>What they would pay, what bothers them, and why they would pass.</p></div>
+<div><span>{svg("chart")}</span><p><b>Insights you can use</b>The price that earns the most and what turns people off.</p></div></div></div>""")
+
+
+
+
+
 
 
 

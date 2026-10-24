@@ -1016,6 +1016,25 @@ def select_personas(cohort, count, tiers=None):
 def pay_mask(df, p):
     return (df["wtp"] >= p) & (df["vote"] != "Roast")
 
+def price_curve(df, price, cost=0):
+    """Profit (or revenue when cost is 0) per 100 visitors at each price, the sweet spot, and its range."""
+    n = len(df) or 10
+    cost = max(0, int(cost or 0))
+    wmax = int(df["wtp"].max()) if len(df) else 500
+    fine = list(range(10, max(wmax, int(price or 0), 50) + 10, 10))
+    conv = {p: int(pay_mask(df, p).sum()) / n for p in fine}
+    score = {p: (p - cost) * conv[p] * 100 for p in fine}
+    top = max(score.values())
+    best = max(p for p, s in score.items() if s == top)      # highest price among ties keeps margin
+    zone = [p for p, s in score.items() if s >= top * 0.9] if top > 0 else [best]
+    half = [p for p in fine if conv[p] >= 0.5]
+    cand = {49, 99, 149, 199, 299, 399, 499, 799, 1199, 1999} | {int(price or 0), best}
+    if cost:
+        cand.add(cost)
+    cand = sorted(c for c in cand if c > 0 and (c <= wmax * 1.15 or c in (price, best, cost)))
+
+
+
 
 
 

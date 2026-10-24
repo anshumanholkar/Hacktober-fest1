@@ -1206,6 +1206,16 @@ def brief_html(b):
 <span>Price looks <b>{pv}</b>. {esc(b["price_note"])}</span></div>
 {seg_line}<div class="brief-tip">\U0001F4A1 {esc(b["sharpen"])}</div></div>""")
 
+def chips_html(r):
+    t, m = r.get("tier", ""), r.get("maturity", "")
+    out = f'<i class="tier {t}">{esc(t)}</i>' if t else ""
+    out += f'<i class="mat">{esc(m)}</i>' if m else ""
+    meta_bits = " · ".join(x for x in (f"Age {r['age']}" if r.get("age") else "", r.get("income", ""),
+                                       f"can afford up to ₹{r['cap']}" if r.get("cap") else "") if x)
+    return out + (f'<br><small style="color:var(--mut)">{esc(meta_bits)}</small>' if meta_bits else "")
+
+
+
 
 
 

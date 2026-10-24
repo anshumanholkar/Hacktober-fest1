@@ -633,6 +633,18 @@ def meta(p):
             "traits", "goals", "pain_points", "budget", "purchasing_habits", "interests")
     return {k: p.get(k, "") for k in keys}
 
+def norm_pick(raw, vote):
+    t = str(raw or "").lower()
+    if vote == "Roast" or any(w in t for w in ("nothing", "none", "no purchase", "skip")):
+        return "Nothing" if vote != "Buy" else "Buy as-is"
+    if any(w in t for w in ("lite", "cheap", "basic", "light", "free", "smaller")):
+        return "Lite version"
+    if any(w in t for w in ("premium", "pro", "bulk", "team", "plus", "annual", "family")):
+        return "Premium version"
+    return "Buy as-is" if vote == "Buy" else "Lite version"
+
+
+
 
 
 

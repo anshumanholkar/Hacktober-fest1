@@ -189,7 +189,21 @@ def get_honeycomb_rows(n):
     rem = n % 4
     return [base + (1 if i < rem else 0) for i in range(4)]
 
+# ----------------------------------------------------------------------------
+# CSS
+# ----------------------------------------------------------------------------
+VARS_DARK = ("--bg:#050A1C;--panel:#070D26;--card:#0A1130;--line:#18214D;--txt:#EEF1FF;--mut:#8F9AC6;"
+             "--pri:#7C5CFF;--blue:#3B6CF6;--cy:#38D0E8;--grn:#2ED6A1;--org:#F5A43B;--red:#FF5A7A;--in:#060C26")
+VARS_LIGHT = ("--bg:#F1F4FB;--panel:#fff;--card:#fff;--line:#DDE3F2;--txt:#14183A;--mut:#6B7599;"
+              "--pri:#7C5CFF;--blue:#3B6CF6;--cy:#38D0E8;--grn:#2ED6A1;--org:#F5A43B;--red:#FF5A7A;--in:#F6F8FD")
 
+
+def mask(name):
+    inner = ICONS[name].replace('"', "'")
+    s = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' "
+         f"stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'>{inner}</svg>")
+    u = 'url("data:image/svg+xml,' + quote(s, safe="") + '")'
+    return f"-webkit-mask:{u} center/contain no-repeat;mask:{u} center/contain no-repeat;"
 
 
 

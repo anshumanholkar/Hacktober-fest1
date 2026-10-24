@@ -1253,6 +1253,59 @@ def hl(r):
 
 
 
+def crowd_html(results, n, thinking, fresh=None, price=0):
+    """Live card + honeycomb + verdict card. n = how many personas are revealed."""
+    shown = results[:n]
+    df = pd.DataFrame(shown, columns=["n", "e", "vote", "wtp", "word", "quote"])
+    conv = round(int(pay_mask(df, price).sum()) / n * 100) if n else 0
+    cnt = {v: int((df["vote"] == v).sum()) for v in VOTES}
+    off = time.time() % 1.0
+    rows, k = "", 0
+    total_list = results
+    row_sizes = get_honeycomb_rows(len(total_list))
+    for size in row_sizes:
+        row = ""
+        for _ in range(size):
+            if k >= len(total_list):
+                break
+            i, p = k, results[k]
+            k += 1
+            if i < n:
+                r = results[i]
+                cls = f'hex {r["vote"]}' + (" fresh" if fresh == i else "")
+                txt, sty = {"Buy": "Buy", "Roast": "Roast", "Ignore": "Reject"}[r["vote"]], ""
+            elif thinking:
+                cls, txt, sty = "hex think", "", f' style="animation-delay:-{off:.2f}s"'
+            else:
+                cls, txt, sty = "hex", "", ""
+            row += (f'<div class="{cls}" tabindex="0" data-i="{i}" title="{esc(p["n"])}"{sty}>'
+                    f'<span>{p["e"]}<small>{txt}</small></span></div>')
+        rows += f'<div class="cr">{row}</div>'
+    fcs = ""
+    for i, r in enumerate(shown):
+        d = " def" if i == n - 1 else ""
+        quote = f'<b>{hl(r)}</b>' if r.get("decision") == "ROAST" else hl(r)
+        fcs += (f'<div class="fc{d}" data-i="{i}"><b>{r["e"]} {esc(r["n"])}</b> {chips_html(r)}'
+                f'<br><small style="color:var(--mut)">{esc(r.get("desc", ""))}</small>'
+                f'<br><b>{esc(r.get("decision", VOTES[r["vote"]]))}</b>, up to ₹{r["wtp"]}'
+                f'{" · would pick: <b>" + esc(r["pick"]) + "</b>" if r.get("pick") else ""}'
+                f'<br><span style="color:var(--mut)">{quote}</span>{why_html(r)}</div>')
+    if not shown:
+        fcs = ('<div class="fc def"><b>The crowd is whispering…</b></div>' if thinking else
+               '<div class="fc def"><b>Nobody is here yet.</b><br><span style="color:var(--mut)">'
+               "Pitch an idea in Idea Lab, then hover over any hexagon to hear what the critic said.</span></div>")
+    return one_line(f"""
+<div class="crowd"><div class="card live"><div><small>Would-buy rate, live</small><b>{conv}%</b></div>
+<div class="tally"><span style="color:var(--grn)"><i>{cnt["Buy"]}</i> buy</span>
+<span style="color:var(--mut)"><i>{cnt["Ignore"]}</i> reject</span>
+<span style="color:var(--red)"><i>{cnt["Roast"]}</i> roast</span></div></div>
+<div class="comb">{rows}</div><div class="card focus fcs">{fcs}</div></div>""")
+
+
+
+
+
+
 
 
 

@@ -982,6 +982,24 @@ def run_engine(personas, run, brief=None):
         raise RuntimeError("AI evaluation failed; no results were saved. " + " | ".join(failures[:3]))
     return results
 
+def tier_plan(n, tiers=None, shuffle=False):
+    """Estimate an even split over available audience-generated profiles."""
+    tiers = [t for t in TIERS if t in (tiers or TIERS)] or list(TIERS)
+    cohort = st.session_state.get("persona_cohort", []) if hasattr(st, "session_state") else []
+    pool = {t: sum(1 for p in cohort if p["tier"] == t) if cohort else 5 for t in tiers}
+    left = min(int(n), sum(pool.values()))
+    plan = {t: 0 for t in tiers}
+    while left > 0:
+        order = [t for t in tiers if plan[t] < pool[t]]
+        for t in order:
+            if left == 0:
+                break
+            plan[t] += 1
+            left -= 1
+    return plan
+
+
+
 
 
 

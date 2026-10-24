@@ -966,6 +966,24 @@ def llm_decide(persona, run, brief=None):
             "pick": norm_pick(d["pick"], vote), **meta(persona)}
 
 
+def run_engine(personas, run, brief=None):
+    """Evaluate each persona independently; never mix successful AI output with fallback votes."""
+    if run["engine"] == "rules":
+        raise ValueError("Choose a real AI engine; offline rule-based votes are disabled.")
+    results, failures = [], []
+    with ThreadPoolExecutor(max_workers=min(5, len(personas) or 1)) as ex:
+        jobs = [(p, ex.submit(llm_decide, p, run, brief)) for p in personas]
+        for persona, job in jobs:
+            try:
+                results.append(job.result())
+            except Exception as exc:
+                failures.append(f"{persona['n']}: {type(exc).__name__}: {exc}")
+    if failures:
+        raise RuntimeError("AI evaluation failed; no results were saved. " + " | ".join(failures[:3]))
+    return results
+
+
+
 
 
 

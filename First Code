@@ -564,6 +564,69 @@ def load_recent(i):
         ss.strict = x["strict"]
     ss.view = "lab"
 
+def on_run():
+    ss = st.session_state
+    ss.results = []
+    ss.run_info = None
+    ss.pending = None
+    ss.err = ""
+    if ss.get("shot_error"):
+        ss.err = ss.shot_error
+        return
+    idea = (ss.idea or "").strip()
+    audience = (ss.aud or "").strip()
+    if not idea:
+        ss.err = "Hold on, there is nothing to judge yet. Tell us what you are building first."
+        return
+    if len(idea) > MAX_IDEA_CHARS:
+        ss.err = f"Keep the startup idea under {MAX_IDEA_CHARS:,} characters so the AI can review the complete pitch."
+        return
+    if not audience:
+        ss.err = "Add a target audience so the crowd can reflect the people you want to reach."
+        return
+    if len(audience) > 300:
+        ss.err = "Keep the target audience under 300 characters so the AI can tailor the profiles clearly."
+        return
+    eng = ss.get("engine", "ollama")
+    if eng == "rules":
+        ss.err = "Choose an AI engine to generate real audience-specific feedback. Offline rule-based votes are disabled."
+        return
+    model = (ss.get(f"model_{eng}") or "").strip() or DEFAULT_MODELS[eng]
+    if eng == "ollama":
+        ready, message = ollama_status(model)
+        if not ready:
+            ss.err = message
+            return
+    key = (ss.get(f"key_{eng}") or "").strip() or os.environ.get(ENV_KEYS.get(eng, ""), "")
+    if not key and eng in ENV_KEYS:
+        try:
+            key = str(st.secrets.get(ENV_KEYS[eng], "")).strip()
+        except Exception:
+            key = ""
+    if eng in ENV_KEYS and not key:
+        ss.err = f"{ENGINES[eng]} needs an API key. Set {ENV_KEYS[eng]} in your environment or Streamlit secrets."
+        return
+    try:
+        price, cost = int(ss.price), int(ss.get("cost", 0))
+        size = int(ss.get("aud_size", 10))
+        strict = int(ss.get("strict", 5))
+        if price < 0 or cost < 0 or not 1 <= size <= 20 or not 1 <= strict <= 10:
+            raise ValueError
+    except (TypeError, ValueError):
+        ss.err = "Check the price, production cost, crowd size, and strictness values."
+        return
+    ss.err = ""
+    ss.pending = {"idea": idea, "aud": audience, "price": price, "cost": cost,
+                  "tiers": list(ss.get("tiers") or TIERS), "aud_size": int(ss.get("aud_size", 10)), "strict": int(ss.get("strict", 5)),
+                  "engine": eng, "key": key,
+                  "model": model,
+                  "screenshot": ({"data": ss.shot_b64, "mime": ss.shot_mime}
+                                 if ss.get("shot_b64") else None)}
+    ss.run_info = None
+    ss.view = "crowd"
+
+
+
 
 
 

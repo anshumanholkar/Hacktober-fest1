@@ -1303,6 +1303,22 @@ def crowd_html(results, n, thinking, fresh=None, price=0):
 
 
 
+# ----------------------------------------------------------------------------
+# Views
+# ----------------------------------------------------------------------------
+def suggest_audiences(idea, page=0, k=SUG_PER_PAGE):
+    """Audiences ranked by keyword match with the idea; later pages walk through the rest."""
+    t = " " + (idea or "").lower() + " "
+    scored = sorted((-sum(1 for w in tags if w in t), i, name) for i, (name, tags) in enumerate(AUDIENCES))
+    names = [n for _, _, n in scored]
+    matched = sum(1 for sc, _, _ in scored if sc < 0)
+    start = (page * k) % len(names)
+    return [names[(start + j) % len(names)] for j in range(k)], matched
+
+
+
+
+
 
 
 

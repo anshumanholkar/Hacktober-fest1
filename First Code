@@ -1357,6 +1357,15 @@ def render_sidebar():
                 st.markdown(GEM, unsafe_allow_html=True)
 
 
+def render_topbar():
+    with st.container(key="topbar"):
+        with st.container(key="tg"):
+            st.button("\u200b", key="sun", on_click=set_theme, args=("light",), help="Light theme")
+            st.button("\u200b", key="moon", on_click=set_theme, args=("dark",), help="Dark theme")
+        st.markdown(ME, unsafe_allow_html=True)
+
+
+
 
 
 

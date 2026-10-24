@@ -470,6 +470,29 @@ def hover_css():
         out.append(f'.crowd:not(:has(.hex:hover)):has(.hex[data-i="{i}"]:focus) .fc[data-i="{i}"]{{display:block}}')
     return "\n".join(out)
 
+def dynamic_css():
+    ss = st.session_state
+    theme = ss.theme
+    css = f":root{{{VARS_DARK if theme == 'dark' else VARS_LIGHT}}}\n"
+    if theme == "light":
+        css += (
+            ".hex.Buy{--f:#DDF6EA}.hex.Ignore{--f:#E9ECF2}.hex.Roast{--f:#FFE3E0}\n"
+            ".st-key-g_aud_card{background:linear-gradient(135deg,rgba(59,108,246,0.06),rgba(56,208,232,0.03))!important;border-color:rgba(59,108,246,0.25)!important}\n"
+            ".st-key-g_ai_card{background:linear-gradient(135deg,rgba(124,92,255,0.07),rgba(59,108,246,0.03))!important;border-color:rgba(124,92,255,0.3)!important}\n"
+        )
+    active = {"lab": "nav_lab", "crowd": "nav_crowd", "ins": "nav_ins"}[ss.view]
+    css += (f".st-key-{active} button{{background:linear-gradient(90deg,var(--pri),var(--blue))!important;"
+            "color:#fff!important;box-shadow:0 10px 26px -12px var(--pri)!important}\n")
+    on = "moon" if theme == "dark" else "sun"
+    css += f".st-key-{on} button{{background:var(--line)!important;color:var(--txt)!important}}\n"
+    dots = ["var(--cy)", "var(--pri)", "var(--blue)"]
+    for i, x in enumerate(ss.recent):
+        css += (f'.st-key-rec_{i} button{{--dot:{dots[i % 3]}}}'
+                f'.st-key-rec_{i} button p::after{{content:"{ago(x["t"])}"}}\n')
+    return f"<style>{BASE_CSS}\n{ICON_CSS}\n{hover_css()}\n{css}</style>"
+
+
+
 
 
 

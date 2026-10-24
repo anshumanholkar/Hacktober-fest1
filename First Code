@@ -712,6 +712,12 @@ def call_llm(engine, model, key, system, user, screenshot=None, max_tokens=1200)
     raise ValueError(f"Unknown engine {engine}")
 
 
+def _clip(t, n):
+    t = " ".join(str(t or "").split())
+    return t if len(t) <= n else t[: n - 1] + "\u2026"
+
+
+
 
 
 

@@ -1118,6 +1118,31 @@ def orbs():
 
 
 
+def label(icon, text):
+    return f'<div class="lb"><i>{svg(icon)}</i>{text}</div>'
+
+
+LOGO = one_line(f"""
+<div class="logo"><div class="hx">{svg("brain", "width:24px;height:24px;color:#fff;position:relative;z-index:1")}</div>
+<div><b>HIVE-<span>MIND</span></b><small>AI-powered customer validation</small></div></div>""")
+
+REC_HEAD = f'<div class="rec"><h4>{svg("clock", "width:18px;height:18px")}Recent ideas</h4></div>'
+
+GEM = one_line(f"""
+<div class="gem"><span class="gi">{svg("star", "width:18px;height:18px;fill:#fff;stroke:none")}</span>
+<div>Powered by an AI model<small>Selected for your simulation</small></div></div>""")
+
+ME = f'<div class="me"><b>AS</b>Alex Sharma {svg("down", "width:14px;height:14px")}</div>'
+
+HERO_TXT = one_line("""
+<div class="eye">IDEA LAB</div>
+<h1 class="hm">Turn your idea into real customer feedback.</h1>
+<p class="sub">Tell us what you are building, who it is for, and what it costs.<br>Our virtual crowd will tell you whether they would buy it, pass on it, or roast it.</p>""")
+
+
+
+
+
 
 
 

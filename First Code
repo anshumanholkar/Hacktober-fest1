@@ -1034,6 +1034,18 @@ def price_curve(df, price, cost=0):
     cand = sorted(c for c in cand if c > 0 and (c <= wmax * 1.15 or c in (price, best, cost)))
 
 
+    def sc(c):
+        return (c - cost) * int(pay_mask(df, c).sum()) / n * 100
+
+    curve = pd.DataFrame({"price": cand, "rev": [sc(c) for c in cand],
+                          "conv": [round(int(pay_mask(df, c).sum()) / n * 100) for c in cand]})
+    info = {"lo": min(zone), "hi": max(zone), "top": top, "cost": cost, "profitable": top > 0,
+            "half_max": max(half) if half else None, "best_conv": round(conv.get(best, 0) * 100)}
+    return curve, best, info
+
+ 
+
+
 
 
 

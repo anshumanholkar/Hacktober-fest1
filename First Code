@@ -1164,6 +1164,30 @@ def how_card():
 
 
 
+def why_html(r):
+    parts = [f"Occupation: {r.get('occupation')}" if r.get("occupation") else "",
+             f"Lifestyle: {r.get('lifestyle')}" if r.get("lifestyle") else "",
+             f"Background: {r.get('background')}" if r.get("background") else "",
+             f"Personality: {r.get('traits')}" if r.get("traits") else "",
+             f"Goals: {r.get('goals')}" if r.get("goals") else "",
+             f"Pain points: {r.get('pain_points')}" if r.get("pain_points") else "",
+             f"Budget: {r.get('budget')}" if r.get("budget") else "",
+             f"Buying style: {r.get('purchasing_habits')}" if r.get("purchasing_habits") else "",
+             f"Personal reaction: {r.get('personal_reaction')}" if r.get("personal_reaction") else "",
+             f"Reason: {r.get('why')}" if r.get("why") else "",
+             f"Profile connection: {r.get('profile_connection')}" if r.get("profile_connection") else "",
+             f"Product connection: {r.get('product_connection')}" if r.get("product_connection") else "",
+             f"Main concern or attraction: {r.get('main_concern_or_attraction')}" if r.get("main_concern_or_attraction") else "",
+             f"What could change their mind: {r.get('what_would_change_mind')}" if r.get("what_would_change_mind") else "",
+             f"Uncertainty: {r.get('uncertainty')}" if r.get("uncertainty") else "",
+             f"Interest {r['purchase_interest']}% · value for money {r['value_for_money']}% · AI confidence {r['confidence']}%"
+             if r.get("confidence") is not None else ""]
+    text = "<br>".join(esc(part) for part in parts if part)
+    return f'<br><small style="color:var(--mut);opacity:.85">{text}</small>' if text else ""
+
+
+
+
 
 
 

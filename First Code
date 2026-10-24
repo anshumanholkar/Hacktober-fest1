@@ -463,6 +463,20 @@ mark{background:#FF5A7A44;color:inherit;border-radius:4px;padding:0 4px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 """
 
+def hover_css():
+    out = []
+    for i in range(20):
+        out.append(f'.crowd:has(.hex[data-i="{i}"]:hover) .fc[data-i="{i}"]{{display:block}}')
+        out.append(f'.crowd:not(:has(.hex:hover)):has(.hex[data-i="{i}"]:focus) .fc[data-i="{i}"]{{display:block}}')
+    return "\n".join(out)
+
+
+
+
+
+
+
+
 
 
 

@@ -1152,6 +1152,20 @@ def right_card():
 
 
 
+def how_card():
+    ar = f'<span class="ar">{svg("arrow")}</span>'
+    return one_line(f"""
+<div class="card how"><header><h3>How it works</h3><a>Learn more {svg("arrow", "width:12px;height:12px;vertical-align:-1px")}</a></header>
+<div class="steps">
+<div class="st"><div class="n" style="--c:var(--pri)">1</div><b>Pitch it</b>Say what it is, who it is for, and what it costs.</div>{ar}
+<div class="st"><div class="n" style="--c:var(--blue)">2</div><b>Meet the crowd</b>Each critic judges independently, without peer pressure.</div>{ar}
+<div class="st"><div class="n" style="--c:var(--cy)">3</div><b>Read the damage</b>Verdicts, price limits, objections, and your best price.</div>{ar}
+<div class="st"><div class="n" style="--c:var(--grn)">4</div><b>Fix it and go again</b>Tweak the pitch, change the price, and test it again.</div></div></div>""")
+
+
+
+
+
 
 
 

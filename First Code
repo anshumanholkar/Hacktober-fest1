@@ -548,6 +548,10 @@ def init_state():
 def go(view):
     st.session_state.view = view
 
+def set_theme(t):
+    st.session_state.theme = t
+
+
 
 
 

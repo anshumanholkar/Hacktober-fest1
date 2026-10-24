@@ -1215,6 +1215,24 @@ def chips_html(r):
     return out + (f'<br><small style="color:var(--mut)">{esc(meta_bits)}</small>' if meta_bits else "")
 
 
+def persona_library_html(audience=""):
+    out = ""
+    if st.session_state.get("persona_audience") != audience:
+        return '<div class="plib"><p>Audience personas appear here after the first AI simulation.</p></div>'
+    personas = audience_personas(st.session_state.get("persona_cohort", []), audience)
+    if not personas:
+        return '<div class="plib"><p>Audience personas appear here after the first AI simulation.</p></div>'
+    for t in TIERS:
+        cards = "".join(
+            f'<div class="pcard"><span class="pe">{p["e"]}</span><div><b>{esc(p["n"])}</b>'
+            f'<i class="tier {t}">{t}</i><i class="mat">{p["maturity"]}</i>'
+            f'<small>Age {esc(p["age"])} · {esc(p["income"])} · can afford up to \u20b9{p["cap"]}</small>'
+            f'<p>{esc(p["desc"])}</p></div></div>'
+            for p in personas if p["tier"] == t)
+        out += f'<h5 class="ph">{t} <span>{esc(TIER_INFO[t])}</span></h5>{cards}'
+    return one_line(f'<div class="plib">{out}</div>')
+
+
 
 
 

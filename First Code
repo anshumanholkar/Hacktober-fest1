@@ -1315,6 +1315,31 @@ def suggest_audiences(idea, page=0, k=SUG_PER_PAGE):
     start = (page * k) % len(names)
     return [names[(start + j) % len(names)] for j in range(k)], matched
 
+def pick_aud(name):
+    st.session_state.aud = name
+
+
+def more_sugg():
+    st.session_state.sug_page += 1
+
+
+def render_suggestions():
+    ss = st.session_state
+    names, matched = suggest_audiences(ss.idea, ss.sug_page)
+    note = ("Matched to your idea \u00b7 click to select" if matched and ss.sug_page == 0 else
+            "More ideas \u00b7 click to select" if ss.sug_page else
+            "Popular picks \u00b7 describe your idea for tailored suggestions")
+    st.markdown(one_line(f"""
+<div class="sug-h"><div class="lb"><i>{svg("spark")}</i>Suggested audiences</div><small>{note}</small></div>"""),
+                unsafe_allow_html=True)
+    cur = (ss.aud or "").strip().lower()
+    with st.container(key="sugg"):
+        for j, name in enumerate(names):
+            st.button(esc_md(name), key=f"sug_{j}", on_click=pick_aud, args=(name,),
+                      type="primary" if cur == name.lower() else "secondary")
+        st.button("\u21bb More ideas", key="sug_more", on_click=more_sugg)
+
+
 
 
 

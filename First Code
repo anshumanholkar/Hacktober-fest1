@@ -154,3 +154,10 @@ ICONS = {
 def svg(name, style="", cls="i"):
     s = f' style="{style}"' if style else ""
     return f'<svg class="{cls}" viewBox="0 0 24 24"{s}>{ICONS[name]}</svg>'
+
+
+def esc(t):
+    return (str(t).replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+

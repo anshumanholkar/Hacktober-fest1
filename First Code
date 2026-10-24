@@ -1554,6 +1554,117 @@ def render_crowd():
     else:
         slot.markdown(crowd_html(ss.results, len(ss.results), False, price=ss.sim_price), unsafe_allow_html=True)
 
+def render_ins():
+    ss = st.session_state
+    st.markdown('<div class="eye">INSIGHTS</div><h1 class="hm">The verdict is in</h1>',
+                unsafe_allow_html=True)
+    st.markdown('<p class="sub">AI-generated synthetic feedback for exploration, not responses from real survey participants.</p>',
+                unsafe_allow_html=True)
+    if not ss.results:
+        st.markdown('<div class="card empty">No verdict yet. Pitch an idea to get feedback from the crowd.</div>', unsafe_allow_html=True)
+        return
+    info = ss.get("run_info")
+    if info:
+        model = f" ({esc(info['model'])})" if info["model"] else ""
+        st.markdown(f'<p class="sub" style="margin:-4px 0 14px">Engine: <b>{esc(ENGINES[info["engine"]])}</b>{model}'
+                    f' \u00b7 Strictness <b>{info["strict"]}/10</b></p>', unsafe_allow_html=True)
+        if info["errors"]:
+            st.warning("Some AI-generated context could not be completed:\n\n"
+                       + "\n\n".join(f"- {e}" for e in info["errors"][:3]))
+        if info.get("brief"):
+            st.markdown(brief_html(info["brief"]), unsafe_allow_html=True)
+    df = pd.DataFrame(ss.results)
+    total_n = len(df)
+    cost = int(ss.get("sim_cost", 0) or 0)
+    curve, best, zone = price_curve(df, ss.sim_price, cost)
+    counts = df["vote"].value_counts()
+    cnt = {v: int(counts.get(v, 0)) for v in VOTES}
+    words = df["word"].dropna().str.lower().value_counts().head(3)
+    top = " ".join(f"<mark>{esc(w)}</mark> ×{c}" for w, c in words.items()) or "None"
+    col = {"Buy": "var(--grn)", "Ignore": "#6B7699", "Roast": "var(--red)"}
+
+    with st.container(key="kp"):
+        k1, k2, k3 = st.columns(3)
+        with k2:
+            with st.container(key="kp2"):
+                st.markdown(one_line(f"""
+<div class="k"><b style="color:var(--cy)">₹{best}</b><small>Sweet-spot selling price</small>
+<p style="margin-top:12px;color:var(--mut);font-size:12px">What if it cost…</p></div>"""),
+                            unsafe_allow_html=True)
+                st.slider("Test another price", min_value=29, max_value=2500, step=10, key="sl",
+                          label_visibility="collapsed")
+        p = int(ss.sl)
+        conv = round(int(pay_mask(df, p).sum()) / total_n * 100) if total_n else 0
+        verdict = ("They would line up for this. Ship it." if conv >= 60 else
+                   "Split room. Sharpen the pitch and retest." if conv >= 30 else "Ouch. Rework the idea before you launch.")
+        with k1:
+            with st.container(key="kp1"):
+                split = "".join(f'<i style="flex:{cnt[v]};background:{col[v]}"></i>' for v in VOTES)
+                leg = "".join(f"<span><b>{cnt[v]}</b> {'reject' if v == 'Ignore' else v.lower()}</span>" for v in VOTES)
+                st.markdown(one_line(f"""
+<div class="k"><b>{conv}%</b><small>would buy at ₹{p} ({cnt['Buy']} of {total_n} critics)</small>
+<div class="split">{split}</div><div class="leg">{leg}</div></div>"""), unsafe_allow_html=True)
+        with k3:
+            with st.container(key="kp3"):
+                st.markdown(one_line(f"""
+<div class="k"><b style="font-size:22px;line-height:1.2;margin-bottom:10px">{verdict}</b>
+<small>Biggest drawbacks: {top}</small></div>"""), unsafe_allow_html=True)
+                st.button("Fix it and retest ↺", key="again", on_click=go, args=("lab",))
+
+    # selling price vs production cost
+    n_buy = int(pay_mask(df, p).sum())
+    margin = p - cost
+    profit100 = margin * n_buy / total_n * 100
+    if cost and p < cost:
+        advice = f"Below production cost. You lose ₹{cost - p} on every sale. Price at ₹{cost} or more."
+    elif not zone["profitable"]:
+        advice = (f"At a production cost of ₹{cost}, no price would be profitable with this crowd. Lower your costs or increase the value "
+                  f"before launch.")
+    elif p > zone["hi"]:
+        advice = f"Above the sweet spot. Only {conv}% would buy. Come down toward ₹{best} to earn more."
+    elif p < zone["lo"]:
+        advice = f"Below the sweet spot. Buyers would still pay about ₹{zone['lo']}, so you could earn more per sale."
+    else:
+        advice = "This price is in the sweet spot, balancing the number of buyers with your earnings."
+    half = (f"A majority (50% or more) would still buy at prices up to ₹{zone['half_max']}." if zone["half_max"]
+            else "Fewer than half the crowd would buy at any price.")
+    mpct = f"{margin / p * 100:.0f}%" if p else "0%"
+    st.markdown(one_line(f"""
+<div class="card econ"><div class="lb"><i>{svg("rupee")}</i>Selling price vs production cost</div>
+<div class="econ-g">
+<div><small>You sell at</small><b>₹{p}</b></div>
+<div><small>It costs you</small><b>₹{cost}</b></div>
+<div><small>Margin per unit</small><b style="color:{'var(--grn)' if margin > 0 else 'var(--red)'}">₹{margin} ({mpct})</b></div>
+<div><small>Profit per 100 visitors</small><b style="color:{'var(--grn)' if profit100 > 0 else 'var(--red)'}">₹{profit100:,.0f}</b></div></div>
+<div class="econ-s"><b>Sweet spot: ₹{zone['lo']} to ₹{zone['hi']}</b> (best single price ₹{best}, {zone['best_conv']}% would buy).
+{half}</div>
+<div class="econ-a">{advice}</div></div>"""), unsafe_allow_html=True)
+
+    with st.container(key="barscard"):
+        ttl = (f"Profit per 100 visitors at each price (cost ₹{cost})" if cost
+               else "Which price makes the most money (per 100 visitors)")
+        st.markdown(f"<div><strong>{ttl}</strong></div>", unsafe_allow_html=True)
+        show_chart(price_chart(curve, best, cost))
+        if cost:
+            st.markdown('<div class="aud-sub">Red bars show prices below your production cost.</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="seg-h"><strong>Who would buy at this price, by audience type</strong></div>', unsafe_allow_html=True)
+    st.markdown(seg_html(df, p), unsafe_allow_html=True)
+
+    rows = "".join(
+        f'<div class="tr"><span>{r.e} <b>{esc(r.n)}</b> <i class="tier {r.tier}">{esc(r.tier)}</i><i class="mat">{esc(r.maturity)}</i>'
+        f'<br><small class="pd">Age {esc(r.age)} · {esc(r.income)}<br>{esc(r.desc)}</small></span>'
+        f'<span><i class="chip {r.vote}">{r.decision}</i></span>'
+        f'<span>₹{r.wtp}</span><span>{esc(r.pick)}</span>'
+        f'<span>{"<mark>" + esc(r.word) + "</mark>" if isinstance(r.word, str) else "None"}</span></div>'
+        for r in df.itertuples())
+    with st.container(key="tabwrap"):
+        st.markdown(one_line(f"""
+<div class="card"><div class="tr h"><span>Critic</span><span>Decision</span><span>Would pay up to</span><span>Purchase option</span><span>What concerned them</span></div>{rows}</div>"""),
+                    unsafe_allow_html=True)
+
+
+
 
 
 

@@ -643,6 +643,20 @@ def norm_pick(raw, vote):
         return "Premium version"
     return "Buy as-is" if vote == "Buy" else "Lite version"
 
+def _post(url, payload, headers=None, timeout=60):
+    req = urllib.request.Request(url, data=json.dumps(payload).encode(),
+                                 headers={"Content-Type": "application/json", **(headers or {})})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="ignore")[:200]
+        raise RuntimeError(f"HTTP {e.code}: {body}") from None
+
+
+@st.cache_data(ttl=10, show_spinner=False)
+def ollama_status(model):
+
 
 
 

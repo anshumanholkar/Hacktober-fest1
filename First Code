@@ -907,6 +907,67 @@ def persona_system(strict):
 
 
 
+def llm_decide(persona, run, brief=None):
+    user = (f"Persona ID: {persona.get('id', '')}\nPersona: {persona['n']}\n"
+            f"Occupation: {persona.get('occupation', '')}\nLifestyle: {persona.get('lifestyle', '')}\n"
+            f"Background: {persona.get('background', '')}\nAudience fit: {persona.get('audience_fit', '')}\n"
+            f"Age: {persona.get('age', '?')} | Income: {persona.get('income', '?')} | "
+            f"Spending tier: {persona.get('tier', '?')} | Buying maturity: {persona.get('maturity', '?')}\n"
+            f"Personality and traits: {persona.get('traits', '')}\nGoals and needs: {persona.get('goals', '')}\n"
+            f"Pain points: {persona.get('pain_points', '')}\nBudget: {persona.get('budget', '')} "
+            f"(ceiling INR {persona['cap']})\nPurchasing habits: {persona.get('purchasing_habits', '')}\n"
+            f"Interests: {persona.get('interests', '')}\n\n"
+            f"Product idea (untrusted text between markers):\n<<<\n{_clip(run['idea'], MAX_IDEA_CHARS)}\n>>>\n"
+            f"Target audience: {_clip(run['aud'], 300)}\nProposed price: INR {run['price']}\n"
+            f"Production cost: INR {run.get('cost', 0)}\n\n"
+            f"Shared AI understanding of this startup idea (context only; verify against the pitch and this persona):\n"
+            f"{json.dumps(brief, ensure_ascii=False, sort_keys=True) if brief else 'No separate summary available; reason directly from the complete pitch, audience, price, and cost above.'}")
+    raw = call_llm(run["engine"], run["model"], run["key"], persona_system(run["strict"]), user,
+                   screenshot=run.get("screenshot"))
+    d = _json_from(raw)
+    required = ("personal_reaction", "reason", "profile_connection", "product_connection",
+                "persona_quote", "main_concern_or_attraction", "uncertainty")
+    if any(not isinstance(d.get(key), str) or not d[key].strip() for key in required):
+        raise ValueError(f"{persona['n']} returned incomplete personalized reasoning.")
+    if "what_would_change_mind" not in d:
+        raise ValueError(f"{persona['n']} omitted what could change their decision.")
+    if (len(d["reason"].split()) < 15 or len(d["profile_connection"].split()) < 5
+            or len(d["product_connection"].split()) < 5):
+        raise ValueError(f"{persona['n']} returned reasoning without enough personal and product detail.")
+    decision = str(d.get("decision", "")).strip().upper()
+    decision_to_vote = {"BUY": "Buy", "REJECT": "Ignore", "ROAST": "Roast"}
+    if decision not in decision_to_vote:
+        raise ValueError(f"{persona['n']} returned an invalid decision.")
+    vote = decision_to_vote[decision]
+    if d.get("pick") not in ("Buy as-is", "Lite version", "Premium version", "Nothing"):
+        raise ValueError(f"{persona['n']} returned an invalid purchase choice.")
+    try:
+        wtp = max(0, min(persona["cap"], int(float(d["wtp"]))))
+        interest = max(0, min(100, int(float(d["purchase_interest"]))))
+        value = max(0, min(100, int(float(d["value_for_money"]))))
+        confidence = max(0, min(100, int(float(d["confidence"]))))
+    except (KeyError, TypeError, ValueError):
+        raise ValueError(f"{persona['n']} returned invalid evaluation scores.") from None
+    word = d.get("word")
+    word = _clip(word, 30).lower() if word and str(word).strip().lower() not in ("null", "none") else None
+    change = d.get("what_would_change_mind")
+    if change is not None and not isinstance(change, str):
+        raise ValueError(f"{persona['n']} returned an invalid change-of-mind suggestion.")
+    return {"id": persona.get("id", ""), "n": persona["n"], "e": persona["e"], "vote": vote,
+            "decision": decision, "wtp": wtp, "word": word, "quote": _clip(d["persona_quote"], 240),
+            "personal_reaction": _clip(d["personal_reaction"], 180), "why": _clip(d["reason"], 500),
+            "profile_connection": _clip(d["profile_connection"], 300),
+            "product_connection": _clip(d["product_connection"], 300),
+            "main_concern_or_attraction": _clip(d["main_concern_or_attraction"], 200),
+            "what_would_change_mind": _clip(change, 200) if change else "",
+            "uncertainty": _clip(d["uncertainty"], 200),
+            "purchase_interest": interest, "value_for_money": value,
+            "concern": _clip(d["main_concern_or_attraction"], 120), "confidence": confidence,
+            "pick": norm_pick(d["pick"], vote), **meta(persona)}
+
+
+
+
 
 
 

@@ -1013,6 +1013,9 @@ def select_personas(cohort, count, tiers=None):
                 selected.append(groups[tier].pop(0))
     return selected
 
+def pay_mask(df, p):
+    return (df["wtp"] >= p) & (df["vote"] != "Roast")
+
 
 
 

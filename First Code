@@ -747,6 +747,52 @@ PERSONA_SYSTEM = (
 )
 
 
+def generate_personas(run):
+    user = (f"Generate exactly 20 profiles for this target audience:\n<<<\n{_clip(run['aud'], 300)}\n>>>\n"
+            "Use Indian rupees for budgets. Keep fields concise and concrete. Include varied decision styles. Return exactly "
+            "five personas in each of the four spending tiers (Budget, Value, Comfort, Premium). "
+            "max_willingness_to_pay must be a plausible positive INR amount.")
+    payload = _json_from(call_llm(run["engine"], run["model"], run["key"], PERSONA_SYSTEM, user,
+                                 max_tokens=8000))
+    items = payload.get("personas")
+    if not isinstance(items, list) or len(items) != 20:
+        raise ValueError("The AI must return exactly 20 audience personas; please retry.")
+    normalized, names = [], set()
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            raise ValueError(f"Persona {index + 1} is malformed.")
+        name = _clip(item.get("name"), 60)
+        if not name or name.casefold() in names:
+            raise ValueError(f"Persona {index + 1} has a missing or duplicate name.")
+        names.add(name.casefold())
+        tier = str(item.get("tier", "Value")).strip().title()
+        maturity = str(item.get("maturity", "Practical")).strip().title()
+        if tier not in TIERS or maturity not in MATURITY_INFO:
+            raise ValueError(f"Persona {name} has an invalid spending tier or buying style.")
+        try:
+            cap = int(float(item.get("max_willingness_to_pay", 0)))
+        except (TypeError, ValueError):
+            cap = 0
+        if cap <= 0:
+            raise ValueError(f"Persona {name} has an invalid budget ceiling.")
+        fields = {key: _clip(item.get(key), limit) for key, limit in {
+            "occupation": 100, "lifestyle": 140, "background": 220, "audience_fit": 160,
+            "traits": 160, "goals": 160, "pain_points": 160, "budget": 100,
+            "purchasing_habits": 160, "interests": 160,
+        }.items()}
+        if not all(fields.values()):
+            raise ValueError(f"Persona {name} is missing profile details.")
+        normalized.append({"id": f"p{index + 1:02d}", "n": name, "e": _clip(item.get("emoji"), 8) or "👤",
+                          "tier": tier, "maturity": maturity, "age": _clip(item.get("age"), 30),
+                          "income": _clip(item.get("income"), 70), "cap": cap, **fields,
+                          "desc": f"{fields['background']} {fields['audience_fit']}", "bad": [fields["pain_points"]]})
+    counts = {tier: sum(1 for person in normalized if person["tier"] == tier) for tier in TIERS}
+    if any(count != 5 for count in counts.values()):
+        raise ValueError("The AI did not return five personas in each spending tier; please retry.")
+    return normalized
+
+
+
 
 
 

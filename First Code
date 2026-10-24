@@ -1002,6 +1002,19 @@ def audience_personas(personas, audience):
     """Return AI-generated audience profiles without rewriting their identities."""
     return [dict(p) for p in personas if p.get("audience_fit") and audience]
 
+def select_personas(cohort, count, tiers=None):
+    """Select a stable, even-by-tier subset without changing persona identities."""
+    chosen = [tier for tier in TIERS if tier in (tiers or TIERS)] or list(TIERS)
+    groups = {tier: [p for p in cohort if p.get("tier") == tier] for tier in chosen}
+    selected = []
+    while len(selected) < int(count) and any(groups.values()):
+        for tier in chosen:
+            if groups[tier] and len(selected) < int(count):
+                selected.append(groups[tier].pop(0))
+    return selected
+
+
+
 
 
 

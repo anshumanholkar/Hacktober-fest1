@@ -1232,6 +1232,19 @@ def persona_library_html(audience=""):
         out += f'<h5 class="ph">{t} <span>{esc(TIER_INFO[t])}</span></h5>{cards}'
     return one_line(f'<div class="plib">{out}</div>')
 
+def seg_html(df, p):
+    cells = ""
+    for t in TIERS:
+        d = df[df["tier"] == t]
+        if d.empty:
+            continue
+        buy = round(int(pay_mask(d, p).sum()) / len(d) * 100)
+        cells += (f'<div class="seg"><i class="tier {t}">{t}</i><b>{buy}%</b>'
+                  f'<small>would buy at ₹{p} · {len(d)} critic{"s" if len(d) != 1 else ""}<br>'
+                  f'avg limit ₹{round(d["wtp"].mean())}</small></div>')
+    return f'<div class="segs">{cells}</div>'
+
+
 
 
 

@@ -1186,6 +1186,29 @@ def why_html(r):
     return f'<br><small style="color:var(--mut);opacity:.85">{text}</small>' if text else ""
 
 
+def brief_html(b):
+    def li(xs):
+        return "".join(f"<li>{esc(x)}</li>" for x in xs) or "<li>Nothing to flag</li>"
+    seg_line = ""
+    if b.get("best_segment") or b.get("who_buys_what") or b.get("who_passes"):
+        seg_line = ('<div class="brief-f"><span>Most likely to buy · <b>' + esc(b.get("best_segment") or "n/a") + "</b>: "
+                    + esc(b.get("who_buys_what", "")) + "</span><span>Likely to pass: "
+                    + esc(b.get("who_passes", "")) + "</span></div>")
+    pv = {"too low": "too cheap", "fair": "fairly priced", "high": "a bit pricey",
+          "too high": "too expensive"}[b["price_verdict"]]
+    return one_line(f"""
+<div class="card brief"><div class="brief-h"><div class="lb"><i>{svg("brain")}</i>How the AI read your idea</div>
+<span class="aud-pill">{esc(b["category"])}</span></div>
+<p class="brief-s">{esc(b["summary"])}</p>
+<div class="brief-cols"><div><h5>Working for you</h5><ul>{li(b["strengths"])}</ul></div>
+<div><h5>Watch out</h5><ul>{li(b["risks"])}</ul></div></div>
+<div class="brief-f"><span>Pitch clarity <b>{b["clarity"]}/10</b></span>
+<span>Price looks <b>{pv}</b>. {esc(b["price_note"])}</span></div>
+{seg_line}<div class="brief-tip">\U0001F4A1 {esc(b["sharpen"])}</div></div>""")
+
+
+
+
 
 
 

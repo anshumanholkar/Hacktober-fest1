@@ -1,0 +1,151 @@
+"""HIVE-MIND - Streamlit / Pandas / Altair version of hive-mind-dark.html
+
+Run:
+    pip install streamlit pandas altair
+    ollama pull gemma4        # for the local Gemma 4 engine
+    streamlit run hivemind_streamlit.py
+
+Look and layout are copied from the HTML file (same CSS, same markup, same
+SVG icons). Streamlit supplies the interactive parts (inputs, buttons,
+slider), Pandas does the simulation maths and Altair draws the price chart.
+"""
+import base64
+import json
+import math
+import os
+import re
+import time
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import quote
+
+import altair as alt
+import pandas as pd
+import streamlit as st
+
+st.set_page_config(page_title="Turn your idea into real customer feedback.", page_icon="🧠", layout="wide",
+                   initial_sidebar_state="expanded")
+
+# ----------------------------------------------------------------------------
+# Data (Up to 20 Diverse Personas for Catchy Dynamic Scaling)
+# ----------------------------------------------------------------------------
+# Each persona: tier (affordability band), maturity (buying behaviour), age, income, cap (max they'd pay, INR),
+# desc (who they are), bad (pet-peeve words the rule engine looks for)
+TIERS = ["Budget", "Value", "Comfort", "Premium"]
+TIER_INFO = {
+    "Budget": "Can afford up to about \u20b9250",
+    "Value": "Can afford about \u20b9250 to \u20b9500",
+    "Comfort": "Can afford about \u20b9500 to \u20b9900",
+    "Premium": "Can afford \u20b9900 and above",
+}
+MATURITY_INFO = {
+    "Impulsive": "Buys on emotion, trend or convenience. Fast yes, fast no.",
+    "Exploring": "Still discovering what they like. Loves trials and free tiers.",
+    "Practical": "Compares options and buys when value is clear.",
+    "Seasoned": "Experienced and cautious. Slow to trust, loyal once won.",
+}
+VOTES = {"Buy": "Would buy", "Ignore": "Would reject", "Roast": "Roasted it"}
+PALETTE = {"dark": {"mut": "#8F9AC6"}, "light": {"mut": "#6B7599"}}
+MAX_IDEA_CHARS = 4000
+
+# AI engines that can run the persona simulation
+ENGINES = {
+    "rules": "Built-in rules (offline)",
+    "ollama": "Gemma 4 \u00b7 Ollama (local)",
+    "claude": "Claude \u00b7 Anthropic",
+    "openai": "GPT \u00b7 OpenAI",
+    "gemini": "Gemini \u00b7 Google",
+}
+DEFAULT_MODELS = {"rules": "", "ollama": "gemma4", "claude": "claude-sonnet-4-5",
+                  "openai": "gpt-4o-mini", "gemini": "gemini-3.8-flash"}
+ENV_KEYS = {"claude": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY", "gemini": "GEMINI_API_KEY"}
+
+# Target-audience catalog: (label, keywords that make it a good match for an idea)
+AUDIENCES = [
+    ("College students", ["student", "study", "college", "campus", "exam", "learn", "course", "homework", "university"]),
+    ("High-school students", ["school", "teen", "exam", "homework", "tutor"]),
+    ("Graduate students & researchers", ["research", "thesis", "paper", "academic", "phd"]),
+    ("College hostel residents", ["hostel", "mess", "laundry", "roommate", "campus"]),
+    ("Job seekers & fresh graduates", ["job", "resume", "interview", "internship", "fresher", "career"]),
+    ("Young professionals", ["career", "salary", "commute", "apartment", "professional"]),
+    ("Working professionals", ["work", "career", "productivity", "office", "job", "meeting"]),
+    ("Freelancers & gig workers", ["freelanc", "invoice", "client", "gig", "contract"]),
+    ("Remote teams", ["remote", "team", "collaborat", "async", "meeting"]),
+    ("Startup founders", ["startup", "founder", "launch", "fundrais", "mvp"]),
+    ("Small business owners", ["shop", "store", "small business", "inventory", "billing", "customers"]),
+    ("Local shopkeepers", ["kirana", "retail", "store", "shop", "inventory"]),
+    ("Online sellers", ["ecommerce", "seller", "marketplace", "listing", "dropship", "amazon"]),
+    ("Content creators", ["creator", "youtube", "instagram", "video", "content", "reel", "podcast"]),
+    ("Gen Z gamers", ["game", "gaming", "esports", "stream", "console"]),
+    ("Mobile-first Gen Z", ["app", "social", "scroll", "short", "trend"]),
+    ("Fitness enthusiasts", ["fitness", "gym", "workout", "protein", " run", "training"]),
+    ("Yoga & wellness seekers", ["yoga", "wellness", "meditat", "mindful", "sleep"]),
+    ("Adults over 60", ["senior", "elder", "retire", "pension", "health"]),
+    ("Caregivers of elderly parents", ["elder", "caregiver", "senior", "parent", "health"]),
+    ("Patients with chronic conditions", ["health", "chronic", "diabetes", "medicine", "patient"]),
+    ("Health-conscious eaters", ["food", "diet", "nutrition", "meal", "organic", "calorie"]),
+    ("Home cooks & foodies", ["recipe", "cook", "kitchen", "restaurant", "food", "meal"]),
+    ("Busy commuters", ["commute", "transport", "travel", "cab", "metro", "traffic"]),
+    ("Frequent travelers", ["travel", "trip", "hotel", "flight", "tour", "visa"]),
+    ("Backpackers & budget travelers", ["travel", "trip", "hostel", "budget", "backpack"]),
+    ("Pet owners", [" pet", " dog", " cat", " vet", "puppy"]),
+    ("New homeowners", ["home", "house", "furniture", "interior", "renovat", "decor"]),
+    ("Renters & first-time movers", ["rent", "apartment", "flat", "roommate", "move"]),
+    ("Eco-conscious millennials", ["sustainab", "eco", "green", "recycl", "plastic", "organic"]),
+    ("Fashion-forward shoppers", ["fashion", "sneaker", "clothing", "style", "outfit", "wear"]),
+    ("Beauty & skincare fans", ["beauty", "skincare", "makeup", "hair", "cosmetic"]),
+    ("Budget-conscious families", ["family", "budget", "save", "deal", "discount", "cheap"]),
+    ("Deal hunters", ["discount", "deal", "coupon", "cashback", "offer", "cheap"]),
+    ("Early adopters & techies", ["gadget", "beta", "tech", "smart", " ai ", "ai-"]),
+    ("Software developers", ["developer", "code", "api", "github", "devops", "programming"]),
+    ("Data analysts & scientists", ["data", "analytics", "dashboard", "sql", " model", " ml"]),
+    ("Designers & creatives", ["design", "figma", "creative", "portfolio", " art"]),
+    ("Marketers & growth teams", ["marketing", " ads", "seo", "campaign", "growth", "brand"]),
+    ("Sales teams", ["sales", "crm", "leads", "pipeline", "outreach"]),
+    ("HR & recruiters", ["hiring", "recruit", "resume", "talent", " hr ", "interview"]),
+    ("Enterprise IT leaders", ["enterprise", "security", "compliance", "saas", "cloud", "integration"]),
+    ("Corporate procurement teams", ["enterprise", "vendor", "procure", "bulk", "b2b"]),
+    ("Cybersecurity teams", ["security", "privacy", "encrypt", "breach", "vulnerab"]),
+    ("Privacy-conscious users", ["privacy", "data", "track", "encrypt", "anonymous"]),
+    ("Investors & traders", ["invest", "stock", "trading", "crypto", "portfolio", "finance"]),
+    ("First-time investors", ["invest", "mutual fund", "savings", " sip", "finance", "wealth"]),
+    ("Personal finance beginners", ["budget", "expense", "money", "saving", "loan", "credit", "upi"]),
+    ("Gig-economy drivers", ["driver", "delivery", "ride", "fuel", "vehicle"]),
+    ("Farmers & agri-entrepreneurs", ["farm", "crop", "agri", "soil", "harvest"]),
+    ("Event & wedding planners", ["wedding", "event", "venue", "party", "catering"]),
+    ("Language learners", ["language", "english", "spanish", "translate", "learn", "speak"]),
+    ("Music lovers & musicians", ["music", "song", "guitar", "band", "playlist", "concert"]),
+    ("Book readers & writers", ["book", "read", "write", "author", "novel", "story"]),
+    ("Anime & pop-culture fans", ["anime", "manga", "cosplay", "fandom", "comic"]),
+    ("DIY & maker hobbyists", ["diy", "maker", "3d print", "craft", "hardware", "arduino"]),
+    ("Car & bike enthusiasts", [" car", "bike", " ev ", "motor", "vehicle", " ride"]),
+    ("Mental health & self-care seekers", ["mental", "stress", "therapy", "anxiety", "journal", "mood"]),
+    ("New parents", ["baby", "newborn", "pregnan", "infant", "parent"]),
+    ("Parents of school-age kids", ["kid", "child", "school", "parent", "family", "learn"]),
+    ("Teachers & tutors", ["teach", "class", "lesson", "tutor", "education"]),
+    ("NGO & social-impact teams", ["ngo", "charity", "donat", "social impact", "volunteer"]),
+]
+SUG_PER_PAGE = 8
+
+# Same icon set as the HTML file (24x24 viewBox, stroked with currentColor)
+ICONS = {
+    "bulb": '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>',
+    "users": '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.3c2.2.7 3.5 2.6 3.5 5.7"/>',
+    "chart": '<rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="4" width="4" height="16" rx="1"/><rect x="17" y="9" width="4" height="11" rx="1"/>',
+    "refresh": '<path d="M20 11a8 8 0 0 0-14.5-4M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4"/>',
+    "clock": '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    "clip": '<path d="M21 11.5 12.5 20a5 5 0 0 1-7-7L14 4.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L15 8"/>',
+    "cloud": '<path d="M7 18a4.5 4.5 0 0 1-.5-9A6 6 0 0 1 18 9.5 4 4 0 0 1 17.5 18M12 12v8M9 15l3-3 3 3"/>',
+    "chat": '<path d="M21 12a8 8 0 0 1-11.7 7L4 20l1.2-4.6A8 8 0 1 1 21 12zM9 11h6M9 14h4"/>',
+    "rupee": '<path d="M7 5h10M7 9h10M7 5c6 0 6 8 0 8l7 7"/>',
+    "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/>',
+    "moon": '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
+    "spark": '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
+    "arrow": '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    "chev": '<path d="M9 6l6 6-6 6"/>',
+    "down": '<path d="M6 9l6 6 6-6"/>',
+    "user": '<circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/>',
+    "star": '<path d="M12 2c.8 5.5 4.5 9.2 10 10-5.5.8-9.2 4.5-10 10-.8-5.5-4.5-9.2-10-10 5.5-.8 9.2-4.5 10-10z"/>',
+    "brain": '<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V4a3 3 0 0 0-3 0zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/>',
+}

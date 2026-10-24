@@ -552,6 +552,18 @@ def set_theme(t):
     st.session_state.theme = t
 
 
+def load_recent(i):
+    ss = st.session_state
+    x = ss.recent[i]
+    ss.idea, ss.aud, ss.price = x["idea"], x["aud"], x["price"]
+    ss.cost = x.get("cost", ss.cost)
+    ss.tiers = x.get("tiers", list(TIERS))
+    if "aud_size" in x:
+        ss.aud_size = x["aud_size"]
+    if "strict" in x:
+        ss.strict = x["strict"]
+    ss.view = "lab"
+
 
 
 

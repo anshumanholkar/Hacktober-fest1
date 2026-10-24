@@ -507,6 +507,45 @@ def ago(t):
         return f"{round(m / 60)} hours ago"
     return f"{round(m / 1440)} day" + ("s" if m >= 2880 else "") + " ago"
 
+def init_state():
+    ss = st.session_state
+    for k, v in {"view": "lab", "theme": "dark", "results": [], "err": "", "pending": None,
+                 "idea": "", "aud": "", "aud_size": 10, "price": 299, "cost": 120, "sl": 299, "sim_price": 299,
+                 "sim_cost": 120, "tiers": list(TIERS),
+                 "shot_name": None, "shot_b64": None, "shot_mime": None,
+                 "shot_error": "",
+                 "persona_audience": "", "persona_cohort": [],
+                 "strict": 5, "engine": "ollama", "sug_page": 0,
+                 **{f"model_{e}": "" for e in ENGINES}, **{f"key_{e}": "" for e in ENGINES}}.items():
+        if k not in ss:
+            ss[k] = v
+    # Give first-time users a concrete, editable idea to evaluate.
+    if not str(ss.get("idea", "")).strip():
+        ss.idea = (
+            "A simple class-management tool for independent tutors: track attendance "
+            "and monthly fees, then send clear parent updates from one class roster."
+        )
+    if not str(ss.get("aud", "")).strip():
+        ss.aud = (
+            "Independent tutors and small coaching classes in India managing "
+            "10–50 students without dedicated admin staff"
+        )
+    if "recent" not in ss:
+        ss.recent = seeds()
+    if ss.get("results") and not all(isinstance(r, dict) and r.get("id") and "confidence" in r
+                                      and r.get("decision") in ("BUY", "REJECT", "ROAST")
+                                      and r.get("profile_connection") and r.get("product_connection")
+                                      for r in ss.results):
+        ss.results = []
+        ss.run_info = None
+        ss.view = "lab"
+        ss.err = "Results from an older simulation were cleared. Run a new AI simulation to refresh them."
+    # keep widget values alive while their widgets are not on screen
+    for k in ("idea", "aud", "aud_size", "price", "cost", "tiers", "sl", "strict", "engine",
+              *[f"model_{e}" for e in ENGINES], *[f"key_{e}" for e in ENGINES]):
+        ss[k] = ss[k]
+
+
 
 
 

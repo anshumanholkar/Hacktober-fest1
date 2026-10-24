@@ -1085,6 +1085,30 @@ def show_chart(chart):
 
 
 
+# ----------------------------------------------------------------------------
+# HTML blocks
+# ----------------------------------------------------------------------------
+def brain_svg():
+    P = []
+    h = ('<defs><radialGradient id="hmbg" cx="35%" cy="30%"><stop offset="0" stop-color="#9FB4FF"/>'
+         '<stop offset=".5" stop-color="#4B4FE8"/><stop offset="1" stop-color="#171A6B"/></radialGradient></defs>'
+         '<circle cx="60" cy="60" r="57" fill="url(#hmbg)"/>')
+    for i in range(48):
+        a, r = i * 2.399, math.sqrt(i / 48) * 50
+        P.append((60 + r * math.cos(a), 60 + r * math.sin(a)))
+    for i, p in enumerate(P):
+        for j, q in enumerate(P):
+            if j > i and math.hypot(p[0] - q[0], p[1] - q[1]) < 17:
+                h += (f'<line x1="{p[0]:.2f}" y1="{p[1]:.2f}" x2="{q[0]:.2f}" y2="{q[1]:.2f}" '
+                      'stroke="#C9D6FF" stroke-opacity=".5" stroke-width=".6"/>')
+    for p in P:
+        h += f'<circle cx="{p[0]:.2f}" cy="{p[1]:.2f}" r="1.1" fill="#fff"/>'
+    return f'<svg viewBox="0 0 120 120">{h}</svg>'
+
+
+
+
+
 
 
 

@@ -545,6 +545,12 @@ def init_state():
               *[f"model_{e}" for e in ENGINES], *[f"key_{e}" for e in ENGINES]):
         ss[k] = ss[k]
 
+def go(view):
+    st.session_state.view = view
+
+
+
+
 
 
 

@@ -161,3 +161,11 @@ def esc(t):
             .replace(">", "&gt;").replace('"', "&quot;"))
 
 
+def esc_md(t):
+    """Escape text that goes into a Streamlit button label (markdown)."""
+    t = " ".join(str(t).split())
+    return re.sub(r"([\\`*_{}\[\]()#+\-.!|<>~$])", r"\\\1", t)
+
+
+
+

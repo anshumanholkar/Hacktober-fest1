@@ -1661,7 +1661,23 @@ def render_ins():
     with st.container(key="tabwrap"):
         st.markdown(one_line(f"""
 <div class="card"><div class="tr h"><span>Critic</span><span>Decision</span><span>Would pay up to</span><span>Purchase option</span><span>What concerned them</span></div>{rows}</div>"""),
-                    unsafe_allow_html=True)
+                    unsafe_allow_html=True) 
+
+
+# ----------------------------------------------------------------------------
+# App
+# ----------------------------------------------------------------------------
+def main():
+    init_state()
+    st.markdown(dynamic_css(), unsafe_allow_html=True)
+    render_sidebar()
+    render_topbar()
+    with st.container(key="page"):
+        {"lab": render_lab, "crowd": render_crowd, "ins": render_ins}[st.session_state.view]()
+
+
+if __name__ == "__main__":
+    main()
 
 
 
